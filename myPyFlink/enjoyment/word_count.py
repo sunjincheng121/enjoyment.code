@@ -48,5 +48,7 @@ t_env.scan('mySource') \
     .select('word, count(1)') \
     .insert_into('mySink')
 
+print "Run..."
 # 执行Job
 t_env.execute("wordcount")
+print "Run...Finish."
