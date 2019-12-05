@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sales Statistic</title>
+    <script src="jquery-1.11.3.js"></script>
+    <script src="Chart.min.js"></script>
+    <script src="md5.js"></script>
+</head>
+<body>
+<div id="canvas-holder-pie" style="padding-top:80px;width:40%;min-width:450px;float:left">
+    <canvas id="chart-area-pie"></canvas>
+</div>
+<div id="canvas-holder-bar" style="padding-top:40px;width:40%;min-width: 450px;float:left">
+    <canvas id="chart-area-bar"></canvas>
+</div>
+<script>
+    var pieConfig = {
+        type: 'pie',
+        data: {
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+            }],
+            labels: []
+        },
+        options: {
+            responsive: true,
+            title: {
+                text: 'Sales',
+                display: true,
+            },
+        }
+    };
+    var barConfig = {
+        type: 'bar',
+        data: {
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+            }],
+            labels: []
+        },
+        options: {
+            responsive: true,
+            legend: {
+                display: false
+            },
+            scales: {
+                yAxes: [{
+                    ticks: {
+                        beginAtZero: true,
+                        stepSize: 10
+                    },
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Sales volume'
+                    }
+                }],
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'City'
+                    }
+                }],
+            },
+            title: {
+                text:  'Sales volume',
+                display: true,
+            },
+        }
+    };
+
+    function updateChartDataIncrementally(chartData, newData) {
+        if (newData.labels.length >= chartData.labels.length) {
+            var diffLabels = [];
+            var diffCounts = [];
+            var diffColors = [];
+            for (let i = 0; i < newData.labels.length; i++) {
+                var index = chartData.labels.indexOf(newData.labels[i]);
+                if (index >= 0) {
+                    chartData.datasets[0].data[index] = newData.datasets[0].data[i]
+                } else {
+                    diffLabels.push(newData.labels[i]);
+                    diffCounts.push(newData.datasets[0].data[i]);
+                    diffColors.push(newData.datasets[0].backgroundColor[i]);
+                }
+            }
+            chartData.labels.push(...diffLabels);
+            chartData.datasets[0].data.push(...diffCounts);
+            chartData.datasets[0].backgroundColor.push(...diffColors);
+        } else {
+            // can not update incremently, just replace with new data.
+            chartData.labels = newData.labels;
+            chartData.datasets[0].data= newData.datasets[0].data;
+            chartData.datasets[0].backgroundColor = newData.datasets[0].backgroundColor;
+        }
+    }
+
+    function updateData(){
+        $.ajax({
+            type:"get",
+            url: "http://" + window.location.host + "/data?" + Date.parse(new Date()),
+            async:true,
+            success:function(csvData){
+                var data = {
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [],
+                        label: 'Dataset 1'
+                    }],
+                    labels: []
+                };
+                // assert schema is:
+                //  label1,total_count1,total_price1\n
+                //  label2,total_count2,total_price2\n
+                //  ...
+                var lines = csvData.split("\n");
+                var count_data = [];
+                var sales_data = [];
+                // update pie chart data
+                for(let lineNo in lines) {
+                    if (lines[lineNo].length <= 0) {
+                        continue
+                    }
+                    var fields = lines[lineNo].split(",");
+                    var label = fields[0];
+                    var count = parseInt(fields[1]);
+                    count_data.push(count);
+                    var sales = parseInt(fields[2]);
+                    sales_data.push(sales);
+                    // use random color
+                    var color = "#" + hex_md5(label).substr(0, 6);
+                    data.datasets[0].backgroundColor.push(color);
+                    data.labels.push(label)
+                }
+                data.datasets[0].data = sales_data;
+                updateChartDataIncrementally(pieConfig.data, data);
+                data.datasets[0].data = count_data;
+                updateChartDataIncrementally(barConfig.data, data);
+                window.myPie.update();
+                window.myBar.update();
+            },error:function(data){
+                console.log(data)
+            }
+        });
+    }
+
+    window.onload = function() {
+        Chart.defaults.global.animation.duration = 700;
+        var pieCtx = document.getElementById('chart-area-pie').getContext('2d');
+        var barCtx = document.getElementById('chart-area-bar').getContext('2d');
+        window.myPie = new Chart(pieCtx, pieConfig);
+        window.myBar = new Chart(barCtx, barConfig);
+        window.setInterval("updateData()", 1000);
+    };
+
+</script>
+</body>
+</html>

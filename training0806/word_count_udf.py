@@ -21,6 +21,7 @@ def word_count():
 
     t_config = TableConfig()
     env = ExecutionEnvironment.get_execution_environment()
+    env.set_parallelism(1)
     t_env = BatchTableEnvironment.create(env, t_config)
 
     # register Results table in table environment

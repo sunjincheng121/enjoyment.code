@@ -1,0 +1,2 @@
+recursive-include target *.jar
+graft pyflink/demo/chart
