@@ -61,7 +61,7 @@ if __name__ == '__main__':
         .in_append_mode() \
         .register_table_source("source")
 
-    st_env.register_table_sink("result",
+    st_env.register_table_sink("result_tab",
                                CsvTableSink(["a", "b"],
                                             [DataTypes.STRING(),
                                              DataTypes.STRING()],
@@ -69,7 +69,7 @@ if __name__ == '__main__':
 
     st_env.scan("source").window(Tumble.over("1.hours").on("rowtime").alias("w")) \
         .group_by("w, a") \
-        .select("a, max(b)").insert_into("result")
+        .select("a, max(b)").insert_into("result_tab")
 
     st_env.execute("tumble time window streaming")
     # cat /tmp/tumble_time_window_streaming.csv

@@ -1,0 +1,13 @@
+org/apache/flink/python/connector/CsvRetractTableSinkFactory.class
+org/apache/flink/python/connector/PrintTableSink.class
+org/apache/flink/python/connector/CsvRetractTableSink$1.class
+org/apache/flink/python/connector/SocketTableSource$1.class
+org/apache/flink/python/connector/SocketTableSource.class
+org/apache/flink/python/connector/SocketTableSourceFactory.class
+org/apache/flink/python/connector/CsvRetractTableSink.class
+org/apache/flink/python/connector/CsvRetractTableSink$Builder.class
+org/apache/flink/python/connector/CsvRetractTableSink$RowSink.class
+org/apache/flink/python/connector/PrintTableSink$1.class
+org/apache/flink/python/connector/PrintTableSink$RowSink.class
+org/apache/flink/python/connector/SocketTableSource$Spliter.class
+org/apache/flink/python/connector/SocketTableSource$Builder.class

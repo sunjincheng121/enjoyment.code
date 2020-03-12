@@ -1,0 +1,17 @@
+MANIFEST.in
+setup.py
+pyflink/demo/__init__.py
+pyflink/demo/chart_table_sink.py
+pyflink/demo/csv_retract_table_sink.py
+pyflink/demo/print_table_sink.py
+pyflink/demo/socket_table_source.py
+pyflink/demo/chart/Chart.min.js
+pyflink/demo/chart/index.html
+pyflink/demo/chart/jquery-1.11.3.js
+pyflink/demo/chart/md5.js
+pyflink_demo_connector.egg-info/PKG-INFO
+pyflink_demo_connector.egg-info/SOURCES.txt
+pyflink_demo_connector.egg-info/dependency_links.txt
+pyflink_demo_connector.egg-info/not-zip-safe
+pyflink_demo_connector.egg-info/top_level.txt
+target/pyflink-demo-connector-0.1.jar

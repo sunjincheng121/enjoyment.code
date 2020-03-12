@@ -28,6 +28,7 @@ def get(array, index):
     return array[index]
 
 t_env.get_config().set_python_executable("python3")
+
 t_env.register_function("split", split)
 t_env.register_function("get", get)
 t_env.from_table_source(SocketTableSource(port=6666))\
