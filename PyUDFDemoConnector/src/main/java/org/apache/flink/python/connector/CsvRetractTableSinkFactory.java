@@ -25,6 +25,7 @@ import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_DELA
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_SERIALIZED;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
@@ -76,6 +77,7 @@ public class CsvRetractTableSinkFactory implements StreamTableSinkFactory<Tuple2
 
 		// schema
 		properties.add(SCHEMA + ".#." + SCHEMA_TYPE);
+		properties.add(SCHEMA + ".#." + SCHEMA_DATA_TYPE);
 		properties.add(SCHEMA + ".#." + SCHEMA_NAME);
 		properties.add(SCHEMA + ".#." + SCHEMA_FROM);
 
