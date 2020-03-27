@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>流量统计</title>
+    <script src="jquery-1.11.3.js"></script>
+    <script src="Chart.min.js"></script>
+    <script src="md5.js"></script>
+</head>
+<body>
+<div style="float:left;padding-left: 10px;">
+    <img style="width: 600px;" src="code.png">
+</div>
+<div style="float:left;">
+<div id="canvas-holder-pie">
+    <canvas id="chart-area-pie" style="padding-top:10px;width: 600px;"></canvas>
+</div>
+<div id="canvas-holder-bar">
+    <canvas id="chart-area-bar" style="padding-top:10px;width: 600px;"></canvas>
+</div>
+</div>
+<div id="kafka message" style="clear: both">
+
+    <label for="input_log">Kafka Message: </label><input id="input_log" size="185">
+    <br>
+    <button id="random" type="button">Random</button> <button id="send" type="button">Send</button>
+    <button id="clear" type="button">Clear and Truncate Mysql</button>
+    <ul id="added_message">
+    </ul>
+</div>
+<script>
+    var pieConfig = {
+        type: 'pie',
+        data: {
+            datasets: [{
+                data: [],
+                backgroundColor: [],
+            }],
+            labels: []
+        },
+        options: {
+            responsive: true,
+            title: {
+                text: '访问量统计',
+                display: true,
+            },
+        }
+    };
+    var barConfig = {
+        type: 'bar',
+        data: {
+            datasets: [
+                {
+                    label: '总流量（KB）',
+                    yAxisID: 'KB',
+                    data: [],
+                    backgroundColor: [],
+                },
+                {
+                    label: '下载速度（KB/s）',
+                    yAxisID: 'KB/s',
+                    data: [],
+                    backgroundColor: [],
+                },
+            ],
+            labels: []
+        },
+        options: {
+            responsive: true,
+            legend: {
+                display: true
+            },
+            scales: {
+                yAxes: [
+                    {
+                        id: 'KB',
+                        ticks: {
+                            beginAtZero: true,
+                            stepSize: 50
+                        },
+                        scaleLabel: {
+                            display: true,
+                            labelString: '总流量（KB）'
+                        },
+                        position: 'left',
+                    },
+                    {
+                        id: 'KB/s',
+                        ticks: {
+                            beginAtZero: true,
+                            stepSize: 50
+                        },
+                        scaleLabel: {
+                            display: true,
+                            labelString: '下载速度（KB/s）'
+                        },
+                        position: 'right',
+                    }
+
+                ],
+                xAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: '省份或直辖市'
+                    }
+                }],
+            },
+            title: {
+                text:  '流量统计',
+                display: true,
+            },
+        }
+    };
+
+    function updateChartDataIncrementally(chartData, newData) {
+        if (newData.labels.length >= chartData.labels.length) {
+            var diffLabels = [];
+            var diffCounts = [];
+            var diffColors = [];
+            var diffCounts2 = [];
+            var diffColors2 = [];
+            for (let i = 0; i < newData.labels.length; i++) {
+                var index = chartData.labels.indexOf(newData.labels[i]);
+                if (index >= 0) {
+                    chartData.datasets[0].data[index] = newData.datasets[0].data[i];
+                    chartData.datasets[0].backgroundColor[index] = newData.datasets[0].backgroundColor[i];
+                    if (chartData.datasets.length > 1) {
+                        chartData.datasets[1].data[index] = newData.datasets[1].data[i];
+                        chartData.datasets[1].backgroundColor[index] = newData.datasets[1].backgroundColor[i];
+                    }
+                } else {
+                    diffLabels.push(newData.labels[i]);
+                    diffCounts.push(newData.datasets[0].data[i]);
+                    diffColors.push(newData.datasets[0].backgroundColor[i]);
+                    if (chartData.datasets.length > 1) {
+                        diffCounts2.push(newData.datasets[1].data[i]);
+                        diffColors2.push(newData.datasets[1].backgroundColor[i]);
+                    }
+                }
+            }
+            chartData.labels.push(...diffLabels);
+            chartData.datasets[0].data.push(...diffCounts);
+            chartData.datasets[0].backgroundColor.push(...diffColors);
+            if (chartData.datasets.length > 1) {
+                chartData.datasets[1].data.push(...diffCounts2);
+                chartData.datasets[1].backgroundColor.push(...diffColors2);
+            }
+        } else {
+            // can not update incremently, just replace with new data.
+            chartData.labels = newData.labels;
+            chartData.datasets[0].data= newData.datasets[0].data;
+            chartData.datasets[0].backgroundColor = newData.datasets[0].backgroundColor;
+            if (chartData.datasets.length > 1) {
+                chartData.datasets[1].data= newData.datasets[1].data;
+                chartData.datasets[1].backgroundColor = newData.datasets[1].backgroundColor;
+            }
+        }
+    }
+
+    function updateData(){
+        $.ajax({
+            type:"get",
+            url: "http://" + window.location.host + "/data?" + Date.parse(new Date()),
+            async:true,
+            success:function(csvData){
+                var data = {
+                    datasets: [
+                        {
+                            data: [],
+                            backgroundColor: [],
+                            label: 'Dataset 1'
+                        },
+                        {
+                            data: [],
+                            backgroundColor: [],
+                            label: 'Dataset 2'
+                        },
+                    ],
+                    labels: []
+                };
+                // assert schema is:
+                //  label1,access_count,total_download,download_speed\n
+                //  label2,access_count,total_download,download_speed\n
+                //  ...
+                var lines = csvData.split("\n");
+                var count_data = [];
+                var download_data = [];
+                var speed_data = [];
+                var random_colors = []
+                // update pie chart data
+                for(let lineNo in lines) {
+                    if (lines[lineNo].length <= 0) {
+                        continue
+                    }
+                    var fields = lines[lineNo].split(",");
+                    var label = fields[0];
+                    var count = parseInt(fields[1]);
+                    count_data.push(count);
+                    var download = parseInt(fields[2]) / 1000.0;
+                    download_data.push(download);
+                    var speed = parseFloat(fields[3]);
+                    speed_data.push(speed);
+                    // use random color
+                    // var color = "#" + hex_md5(label).substr(0, 6);
+                    var random_color = "#" + hex_md5(label).substr(0, 6);
+                    var color = "#ff2ecf";
+                    var color2 = "#e2f01c";
+                    //var color2 = "#" + hex_md5(label + "salt").substr(0, 6);
+                    random_colors.push(random_color);
+                    data.datasets[0].backgroundColor.push(color);
+                    data.datasets[1].backgroundColor.push(color2);
+                    data.labels.push(label)
+                }
+                var color0 = data.datasets[0].backgroundColor;
+                data.datasets[0].backgroundColor = random_colors;
+                data.datasets[0].data = count_data;
+                updateChartDataIncrementally(pieConfig.data, data);
+                data.datasets[0].backgroundColor = color0;
+                data.datasets[0].data = download_data;
+                data.datasets[1].data = speed_data;
+                updateChartDataIncrementally(barConfig.data, data);
+                window.myPie.update();
+                window.myBar.update();
+            },error:function(data){
+                console.log(data)
+            }
+        });
+    }
+
+    function random_guid() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0,
+                v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function random_ip() {
+        var ip_list = [
+            '27.128.178',
+            '1.8.110',
+            '1.15.255',
+            '14.102.158',
+            '14.104.149',
+            '220.243.255',
+            '1.69.127',
+            '1.180.240',
+            '36.24.191',
+            '14.18.159',
+            '39.169.231'
+        ];
+        return ip_list[(Math.random() * 11 | 0)] + "." +
+            (Math.random() * 256 | 0);
+    }
+
+    function random_size() {
+        return (Math.random() * 1024000 | 0);
+    }
+
+    function random_time() {
+        return (Math.random() * 512 | 0) + 128;
+    }
+
+    function random_url() {
+        var url_list = [
+            'https://www.aliyun.com/activity?spm=5176.12825654.h2v3icoap.1.54212c4a3UoADs#/promotionArea',
+            'https://www.aliyun.com/product/bastionhost?spm=5176.224200.h2v3icoap.119.1f956ed6muyb0V&aly_as=96NleqHS',
+            'https://www.aliyun.com/solution/yiqing/index?spm=5176.141278.h2v3icoap.534.427b70fecB9mJe&aly_as=4vI70jpZ',
+            'https://www.aliyun.com/notfound/',
+            'https://www.aliyun.com/solution/all?spm=5176.141278.h2v3icoap.4.427b70feEbSUkR&aly_as=Pmz98PMp',
+            'https://www.aliyun.com/contact?spm=5176.13342246.h2v3icoap.6.6b523ccbclCtI7&aly_as=NCEFvD1Q',
+            'https://www.aliyun.com/about?spm=a2c4g.11186623.h2v3icoap.10.2e678771j6qzAb',
+            'https://www.aliyun.com/ss/?spm=5176.7920199.1kquk9v2l.3.610951f4HI0mNh'];
+        return url_list[Math.random() * 8 | 0]
+    }
+
+    function randomMessage() {
+        var uuid = random_guid();
+        var ip = random_ip();
+        var time = random_time();
+        var size = random_size();
+        var url = random_url();
+        return uuid + "," + ip + "," + time + "," + size + "," + url;
+    }
+
+    function sendData(kafkaMessage) {
+        $.ajax({
+            type:"get",
+            url: "http://" + window.location.host + "/send?message=" + encodeURIComponent(kafkaMessage) + "&r=" + Date.parse(new Date()),
+            async:true,
+            success:function(ret){
+                $("#added_message").prepend("<li>" + kafkaMessage + "</li>")
+            }
+        });
+    }
+
+    function clear() {
+        $.ajax({
+            type:"get",
+            url: "http://" + window.location.host + "/clear?r=" + Date.parse(new Date()),
+            async:true,
+            success:function(ret){
+                $("#added_message").empty()
+            }
+        });
+    }
+
+    window.onload = function() {
+        Chart.defaults.global.animation.duration = 700;
+        var pieCtx = document.getElementById('chart-area-pie').getContext('2d');
+        var barCtx = document.getElementById('chart-area-bar').getContext('2d');
+        window.myPie = new Chart(pieCtx, pieConfig);
+        window.myBar = new Chart(barCtx, barConfig);
+        window.setInterval("updateData()", 1000);
+        $("#random").click(function () {
+            $("#input_log").val(randomMessage());
+        });
+        $("#send").click(function () {
+            var message = $("#input_log").val();
+            sendData(message);
+        });
+        $("#clear").click(function () {
+            clear()
+        })
+    };
+
+</script>
+</body>
+</html>
